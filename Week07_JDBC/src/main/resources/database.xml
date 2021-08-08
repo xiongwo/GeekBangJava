@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd"
+       default-lazy-init="true">
+
+    <!-- 父数据源 -->
+    <bean id="baseDataSource" abstract="true"
+          class="com.alibaba.druid.pool.DruidDataSource" init-method="init"
+          destroy-method="close">
+        <!-- 配置初始化大小、最小、最大 -->
+        <property name="initialSize" value="3"/>
+        <property name="minIdle" value="2"/>
+        <property name="maxActive" value="8"/>
+
+        <!-- 配置获取连接等待超时的时间 -->
+        <property name="maxWait" value="-1"/>
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="0"/>
+
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="30000"/>
+
+        <property name="validationQuery" value="select 1 from dual"/>
+        <property name="testWhileIdle" value="true"/>
+        <property name="testOnBorrow" value="false"/>
+        <property name="testOnReturn" value="false"/>
+
+        <!-- 打开PSCache，并且指定每个连接上PSCache的大小 如果用Oracle，则把poolPreparedStatements配置为true，mysql可以配置为false。 -->
+        <property name="poolPreparedStatements" value="true"/>
+        <property name="maxOpenPreparedStatements" value="20" />
+        <!-- <property name="maxPoolPreparedStatementPerConnectionSize"
+                  value="${druid.maxPoolPreparedStatementPerConnectionSize}"/> -->
+
+        <!-- 配置监控统计拦截的filters -->
+        <property name="filters" value="stat,wall"/>
+        <!--property name="proxyFilters"> <list> <ref bean="log-filter" /> </list>
+            </property -->
+    </bean>
+
+    <bean id="log-filter" class="com.alibaba.druid.filter.logging.Slf4jLogFilter">
+        <property name="statementExecutableSqlLogEnable" value="true"/>
+    </bean>
+
+    <!--写数据 -->
+    <bean id="writeDataSource" parent="baseDataSource">
+        <property name="url" value="jdbc:mysql://localhost:3306/dva?characterEncoding=utf8&amp;serverTimezone=UTC&amp;useSSL=false&amp;rewriteBatchedStatements=true"/>
+        <property name="username" value="root"/>
+        <property name="password" value="root"/>
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+    </bean>
+
+    <!-- druid数据源2-->
+    <bean id="dataSourceDruid2" parent="baseDataSource">
+        <property name="url" value="jdbc:mysql://localhost:3307/dva?characterEncoding=utf8&amp;serverTimezone=UTC&amp;useSSL=false&amp;rewriteBatchedStatements=true"/>
+        <property name="username" value="root"/>
+        <property name="password" value="root"/>
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+    </bean>
+
+    <!-- 支持oracle数据库的clob字段处理 -->
+    <bean id="lobHandler" class="org.springframework.jdbc.support.lob.DefaultLobHandler"
+          lazy-init="true"/>
+
+    <!-- 动态数据源 -->
+    <bean id="dataSource" class="witcher.cirilla.jdbc.dao.DynamicDataSource" primary="true">
+        <property name="targetDataSources">
+            <map key-type="java.lang.String">
+                <entry value-ref="writeDataSource" key="master"></entry>
+                <entry value-ref="dataSourceDruid2" key="slave_1"></entry>
+            </map>
+        </property>
+        <property name="defaultTargetDataSource" ref="writeDataSource"></property>
+    </bean>
+</beans>
