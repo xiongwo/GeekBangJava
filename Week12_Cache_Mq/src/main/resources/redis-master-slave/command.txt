@@ -1,0 +1,5 @@
+redis-cli -p 6379
+set k1 v1
+
+redis-cli -p 6378
+get k1
